@@ -1,0 +1,141 @@
+<head>
+<script src="//cdnjs.cloudflare.com/ajax/libs/d3/3.5.5/d3.min.js"></script>
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css"></link>
+<style type="text/css">
+#progress {
+  padding: 20px;
+}
+
+
+.radial-progress { 
+  &__text {
+    font-family: Arial, sans-serif;
+    font-size: 2rem;
+    font-weight: bold;
+  }  
+}
+</style>
+</head>
+<body>
+<div id="progress" 
+     data-percentage="99" 
+     data-completed-track-width="15" 
+     data-completed-track-colour="555555" 
+     data-completed-fill-colour="3DA5D9" 
+     data-completed-text-colour="3DA5D9" 
+     data-completed-stroke-colour="FFFFFF" 
+     data-track-width="15" 
+     data-year-track-colour="555555" 
+     data-year-fill-colour="2364AA" 
+     data-year-text-colour="2364AA" 
+     data-year-stroke-colour="FFFFFF" 
+     data-stroke-spacing="4"> 
+</div> 
+<script>
+var yearPercentage = {{yearPercentage}};
+var completedPercentage = {{completedPercentage}};
+var wrapper = document.getElementById('progress');
+var start = 0;
+var end = parseFloat(wrapper.dataset.percentage);
+
+var colours = {
+  completedFill: '#' + wrapper.dataset.completedFillColour,
+  completedTrack: '#' + wrapper.dataset.completedTrackColour,
+  completedText: '#' + wrapper.dataset.completedTextColour,
+  completedStroke: '#' + wrapper.dataset.completedStrokeColour,
+  yearFill: '#' + wrapper.dataset.yearFillColour,
+  yearTrack: '#' + wrapper.dataset.yearTrackColour,
+  yearText: '#' + wrapper.dataset.yearTextColour,
+  yearStroke: '#' + wrapper.dataset.yearStrokeColour,
+}
+
+var radius = 150;
+var border = wrapper.dataset.trackWidth;
+var strokeSpacing = wrapper.dataset.strokeSpacing;
+var endAngle = Math.PI * 2;
+var formatText = d3.format('.0%');
+var boxSize = radius * 2;
+var count = end;
+var progress = start;
+var step = end < start ? -0.01 : 0.01;
+
+//Define the circle
+var circle = d3.svg.arc()
+  .startAngle(0)
+  .innerRadius(radius)
+  .outerRadius(radius - border);
+
+var circle2 = d3.svg.arc()
+  .startAngle(0)
+  .innerRadius(radius - border)
+  .outerRadius(radius - border * 2);
+
+//setup SVG wrapper
+var svg = d3.select(wrapper)
+  .append('svg')
+  .attr('width', boxSize)
+  .attr('height', boxSize);
+
+// ADD Group container
+var g = svg.append('g')
+  .attr('transform', 'translate(' + boxSize / 2 + ',' + boxSize / 2 + ')');
+
+//Setup track
+var completedTrack = g.append('g').attr('class', 'radial-progress');
+completedTrack.append('path')
+  .attr('class', 'radial-progress__background')
+  .attr('fill', colours.completedTrack)
+  .attr('stroke', colours.completedStroke)
+  .attr('stroke-width', strokeSpacing + 'px')
+  .attr('d', circle.endAngle(endAngle));
+
+var yearTrack = g.append('g').attr('class', 'radial-progress');
+yearTrack.append('path')
+  .attr('class', 'radial-progress__background')
+  .attr('fill', colours.yearTrack)
+  .attr('stroke', colours.yearStroke)
+  .attr('stroke-width', strokeSpacing + 'px')
+  .attr('d', circle2.endAngle(endAngle));
+
+//Add colour fill
+var value = completedTrack.append('path')
+  .attr('class', 'radial-progress__value')
+  .attr('fill', colours.completedFill)
+  .attr('stroke', colours.completedStroke)
+  .attr('stroke-width', strokeSpacing + 'px');
+//Add colour fill
+var value2 = yearTrack.append('path')
+  .attr('class', 'radial-progress__value')
+  .attr('fill', colours.yearFill)
+  .attr('stroke', colours.yearStroke)
+  .attr('stroke-width', strokeSpacing + 'px');
+
+//Add text value
+var numberText = completedTrack.append('text')
+  .attr('class', 'radial-progress__text')
+  .attr('fill', colours.completedText)
+  .attr('text-anchor', 'start')
+  .attr('dy', '.5rem');
+
+var numberTextsl = g.append('text')
+  //.attr('class', 'radial-progress__text')
+  .attr('fill', colours.completedText)
+  .attr('font-family', 'FontAwesome')
+  .attr('text-anchor', 'start')
+  .attr('dx', '.5rem')
+  .attr('dy', '.5rem')
+  .text(function(d) { return '\uf02d ' + formatText(completedPercentage); })
+
+var numberText2 = g.append('text')
+  //.attr('class', 'radial-progress__text')
+  .attr('fill', colours.yearText)
+  .attr('font-family', 'FontAwesome')
+  .attr('text-anchor', 'end')
+  .attr('dx', '-.5rem')
+  .attr('dy', '.5rem')
+  .text(function(d) { return '\uf073 ' + formatText(yearPercentage); });
+
+value.attr('d', circle.endAngle(endAngle * yearPercentage));
+value2.attr('d', circle2.endAngle(endAngle * completedPercentage));
+</script>
+</body>

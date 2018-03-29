@@ -1,0 +1,19 @@
+{
+  "name": "goodreads-tracker-api-gateway",
+  "version": "1.0.0",
+  "description": "Small api gateway website to track goodreads progress",
+  "main": "index.js",
+  "repository": "https://github.com/dwhillis/goodreads-tracker-api-gateway.git",
+  "author": "Dave Hillis",
+  "license": "MIT",
+  "private": false,
+  "dependencies": {
+    "aws-serverless-express": "^3.1.3",
+    "cheerio": "^1.0.0-rc.2",
+    "express": "^4.16.3",
+    "mustache-express": "^1.2.5",
+    "path": "^0.12.7",
+    "request": "^2.85.0",
+    "request-promise": "^4.2.2"
+  }
+}
