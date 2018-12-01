@@ -33,7 +33,12 @@
 </div> 
 <script>
 var yearPercentage = {{yearPercentage}};
+var yearCurrent = {{yearCurrent}};
+var yearGoal = {{yearGoal}};
 var completedPercentage = {{completedPercentage}};
+var completedCurrent = {{completedCurrent}};
+var completedGoal = {{completedGoal}};
+var userName = '{{userName}}';
 var wrapper = document.getElementById('progress');
 var start = 0;
 var end = parseFloat(wrapper.dataset.percentage);
@@ -98,44 +103,59 @@ yearTrack.append('path')
   .attr('d', circle2.endAngle(endAngle));
 
 //Add colour fill
-var value = completedTrack.append('path')
+var completedValue = completedTrack.append('path')
   .attr('class', 'radial-progress__value')
   .attr('fill', colours.completedFill)
   .attr('stroke', colours.completedStroke)
   .attr('stroke-width', strokeSpacing + 'px');
+  
 //Add colour fill
-var value2 = yearTrack.append('path')
+var yearValue = yearTrack.append('path')
   .attr('class', 'radial-progress__value')
   .attr('fill', colours.yearFill)
   .attr('stroke', colours.yearStroke)
   .attr('stroke-width', strokeSpacing + 'px');
 
 //Add text value
-var numberText = completedTrack.append('text')
-  .attr('class', 'radial-progress__text')
+var yearText = yearTrack.append('text')
+  .attr('fill', colours.yearText)
+  .attr('text-anchor', 'start')
+  .attr('dy', '2.1rem')
+  .attr('dx', '-105px')
+  .text(function(d) { return yearCurrent + '/' + yearGoal; });
+  
+var completeText = completedTrack.append('text')
   .attr('fill', colours.completedText)
   .attr('text-anchor', 'start')
-  .attr('dy', '.5rem');
+  .attr('dy', '2.1rem')
+  .attr('dx', '5px')
+  .text(function(d) { return completedCurrent + '/' + completedGoal; });
 
 var numberTextsl = g.append('text')
-  //.attr('class', 'radial-progress__text')
   .attr('fill', colours.completedText)
   .attr('font-family', 'FontAwesome')
+  .attr('font-size', 'xx-large')
   .attr('text-anchor', 'start')
   .attr('dx', '.5rem')
-  .attr('dy', '.5rem')
+  .attr('dy', '1rem')
   .text(function(d) { return '\uf02d ' + formatText(completedPercentage); })
 
 var numberText2 = g.append('text')
-  //.attr('class', 'radial-progress__text')
   .attr('fill', colours.yearText)
   .attr('font-family', 'FontAwesome')
+  .attr('font-size', 'xx-large')
   .attr('text-anchor', 'end')
   .attr('dx', '-.5rem')
-  .attr('dy', '.5rem')
+  .attr('dy', '1rem')
   .text(function(d) { return '\uf073 ' + formatText(yearPercentage); });
 
-value.attr('d', circle.endAngle(endAngle * yearPercentage));
-value2.attr('d', circle2.endAngle(endAngle * completedPercentage));
+var nameText = g.append('text')
+  .attr('text-anchor', 'middle')
+  .attr('font-size', 'x-large')
+  .attr('dy', '-2rem')
+  .text(function(d) { return userName; });
+
+yearValue.attr('d', circle2.endAngle(endAngle * yearPercentage));
+completedValue.attr('d', circle.endAngle(endAngle * completedPercentage));
 </script>
 </body>

@@ -5,56 +5,54 @@ const path = require('path');
 
 const rp = require('request-promise');
 const cheerio = require('cheerio');
-const options = {
-  uri: 'https://www.goodreads.com/user/show/6940526',
-  transform: function (body) {
-    return cheerio.load(body);
-  }
-};
 
 app.engine('html', mustacheExpress());
 app.set('view engine', 'html');
 app.set('views', __dirname);
 const oneDay = 1000 * 60 * 60 * 24;
 
-//const goodreads = require('goodreads-api-node');
+app.get('/:userId', (req, res) => {
+    console.time('fetch');
+    rp({
+        uri: `https://www.goodreads.com/user/show/${req.params.userId}`,
+        transform: (body) => {
+            console.timeEnd('fetch');
+            console.time('cheerio');
+            console.log(body);
+            return cheerio.load(body);
+        },
+        simple: false
+    })
+    .then(($) => {
+        console.timeEnd('cheerio');
+        const progressText = $('a[class=challengeBooksRead]').text();
+        if (!progressText) {
+            return;
+        }
+        console.log(progressText);
+        let matches = /(\d+) of (\d+)/.exec(progressText);	
+        console.log(matches[1], matches[2]);
+        console.log(`${matches[1] / matches[2] * 100}%`);
+        let completedCurrent = matches[1];
+        let completedGoal = matches[2];
+        let completedPercentage = completedCurrent / completedGoal;
 
-/*
-const credentials = {
-    key: process.env.GOODREADS_KEY,
-    secret: process.env.GOODREADS_SECRET
-};
+        let now = new Date();
+        let start = new Date(now.getFullYear(), 0, 0);
+        let end = new Date(now.getFullYear(), 11, 31);
+        let diff = now - start;
+        let yearCurrent = Math.floor((now - start) / oneDay);
+        let yearGoal = Math.floor((end - start) / oneDay);
+        console.log(`${yearCurrent / yearGoal * 100}%`);	
+        let yearPercentage = yearCurrent / yearGoal;
 
-console.log(credentials);
+        const userName = $('h1[class=userProfileName]').text().trim();
 
-const gr = goodreads(credentials);
-
-*/
-app.get('/', (req, res) => {
-rp(options)
-.then(($) => {
-	const progressText = $('a[class=challengeBooksRead]').text();
-console.log(progressText);
-	let matches = /(\d+) of (\d+)/.exec(progressText);	
-	console.log(matches[1], matches[2]);
-	console.log(`${matches[1] / matches[2] * 100}%`);	
-	let completedPercentage = matches[1] / matches[2];
-
-	let now = new Date();
-	let start = new Date(now.getFullYear(), 0, 0);
-	let end = new Date(now.getFullYear(), 12, 31);
-	let diff = now - start;
-	let day = Math.floor((now - start) / oneDay);
-	let endDay = Math.floor((end - start) / oneDay);
-	console.log(`${day / endDay * 100}%`);	
-	let yearPercentage = day / endDay;
-	res.render('index', {yearPercentage, completedPercentage});
-})
-.catch(console.err);
+        res.render('index', {yearPercentage, yearCurrent, yearGoal, completedPercentage, completedCurrent, completedGoal, userName});
+    })
+    .catch((err) => {
+        console.error(err);
+    });
 });
 
-app.listen(3000, () => {
-    console.log('listening on port 3000');
-});
-
-
+module.exports = app;
