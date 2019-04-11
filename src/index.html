@@ -1,11 +1,17 @@
 <head>
 <script src="//cdnjs.cloudflare.com/ajax/libs/d3/3.5.5/d3.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/vue-resource@1.5.1"></script>
+<script src="https://cdn.jsdelivr.net/npm/lz-string@1.4.4/libs/lz-string.min.js"></script>
 <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css"></link>
 <style type="text/css">
 #progress {
   padding: 20px;
 }
 
+.read {
+    text-decoration: line-through 
+}
 
 .radial-progress { 
   &__text {
@@ -17,145 +23,257 @@
 </style>
 </head>
 <body>
-<div id="progress" 
-     data-percentage="99" 
-     data-completed-track-width="15" 
-     data-completed-track-colour="555555" 
-     data-completed-fill-colour="3DA5D9" 
-     data-completed-text-colour="3DA5D9" 
-     data-completed-stroke-colour="FFFFFF" 
-     data-track-width="15" 
-     data-year-track-colour="555555" 
-     data-year-fill-colour="2364AA" 
-     data-year-text-colour="2364AA" 
-     data-year-stroke-colour="FFFFFF" 
-     data-stroke-spacing="4"> 
-</div> 
+<div id="app">
+    <div id="progress" 
+        data-percentage="99" 
+        data-completed-track-width="15" 
+        data-completed-track-colour="555555" 
+        data-completed-fill-colour="3DA5D9" 
+        data-completed-text-colour="3DA5D9" 
+        data-completed-stroke-colour="FFFFFF" 
+        data-track-width="15" 
+        data-year-track-colour="555555" 
+        data-year-fill-colour="2364AA" 
+        data-year-text-colour="2364AA" 
+        data-year-stroke-colour="FFFFFF" 
+        data-page-text-colour="2D64CA"
+        data-stroke-spacing="4"> 
+    </div> 
+    <div id="books">
+        <table>
+        <tr v-for="(category, index) in categories">
+            <td>{{index+1}}</td>
+            <td v-bind:class="[category.id ? 'read' : 'notRead']">{{ category.label }}</td>
+            <td>
+                <select v-on:change="persist()" v-model="category.id">
+                    <option v-for="book in yearBooks" v-bind:value="book.id">{{book.title}}</option>
+                </select>
+            </td>
+            <td>
+                <button v-on:click="removeCategory(category.label)">-</button>
+            </td>
+        </tr>
+        </table>
+        <form v-on:submit.prevent="addCategory">
+            <input v-model="newCategory" placeholder="Category"></input>
+            <button>+</button>
+        </form>
+    </div>
+</div>
 <script>
-var yearPercentage = {{yearPercentage}};
-var yearCurrent = {{yearCurrent}};
-var yearGoal = {{yearGoal}};
-var completedPercentage = {{completedPercentage}};
-var completedCurrent = {{completedCurrent}};
-var completedGoal = {{completedGoal}};
-var userName = '{{userName}}';
-var wrapper = document.getElementById('progress');
-var start = 0;
-var end = parseFloat(wrapper.dataset.percentage);
 
-var colours = {
-  completedFill: '#' + wrapper.dataset.completedFillColour,
-  completedTrack: '#' + wrapper.dataset.completedTrackColour,
-  completedText: '#' + wrapper.dataset.completedTextColour,
-  completedStroke: '#' + wrapper.dataset.completedStrokeColour,
-  yearFill: '#' + wrapper.dataset.yearFillColour,
-  yearTrack: '#' + wrapper.dataset.yearTrackColour,
-  yearText: '#' + wrapper.dataset.yearTextColour,
-  yearStroke: '#' + wrapper.dataset.yearStrokeColour,
-}
+var app = new Vue({
+    el: '#app',
+    data: {
+        yearBooks: [],
+        categories: [],
 
-var radius = 150;
-var border = wrapper.dataset.trackWidth;
-var strokeSpacing = wrapper.dataset.strokeSpacing;
-var endAngle = Math.PI * 2;
-var formatText = d3.format('.0%');
-var boxSize = radius * 2;
-var count = end;
-var progress = start;
-var step = end < start ? -0.01 : 0.01;
+        yearPercentage: 0,
+        yearCurrent: 0,
+        yearGoal: 0,
+        yearPages: 0,
+        completedPercentage: 0,
+        completedCurrent: 0,
+        completedGoal: 0,
+        userName: '',
 
-//Define the circle
-var circle = d3.svg.arc()
-  .startAngle(0)
-  .innerRadius(radius)
-  .outerRadius(radius - border);
+        newCategory: null,
+    },
+    methods: {
+        addCategory() {
+            this.categories.push({label: this.newCategory});
+            this.newCategory = '';
+            this.persist();
+        },
+        removeCategory(label) {
+            this.categories = this.categories.filter((c) => {
+                return c.label !== label;
+            });
+            this.persist();
+        },
+        persist() {
+            let data = {
+                categories: this.categories,
+                yearPercentage: this.yearPercentage,
+                yearCurrent: this.yearCurrent,
+                yearGoal: this.yearGoal,
+                yearPages: this.yearPages,
+                completedPercentage: this.completedPercentage,
+                completedCurrent: this.completedCurrent,
+                completedGoal: this.completedGoal,
+                userName: this.userName,
+                yearBooks: this.yearBooks
+            };
+            let compressedData = LZString.compressToEncodedURIComponent(JSON.stringify(data));
+            localStorage.data = compressedData;
+        },
+        initChart() {
+            var wrapper = document.getElementById('progress');
+            var start = 0;
+            var end = parseFloat(wrapper.dataset.percentage);
 
-var circle2 = d3.svg.arc()
-  .startAngle(0)
-  .innerRadius(radius - border)
-  .outerRadius(radius - border * 2);
+            var colours = {
+                completedFill: '#' + wrapper.dataset.completedFillColour,
+                completedTrack: '#' + wrapper.dataset.completedTrackColour,
+                completedText: '#' + wrapper.dataset.completedTextColour,
+                completedStroke: '#' + wrapper.dataset.completedStrokeColour,
+                yearFill: '#' + wrapper.dataset.yearFillColour,
+                yearTrack: '#' + wrapper.dataset.yearTrackColour,
+                yearText: '#' + wrapper.dataset.yearTextColour,
+                yearStroke: '#' + wrapper.dataset.yearStrokeColour,
+                pageText: '#' + wrapper.dataset.pageTextColour,
+            }
 
-//setup SVG wrapper
-var svg = d3.select(wrapper)
-  .append('svg')
-  .attr('width', boxSize)
-  .attr('height', boxSize);
+            var radius = 150;
+            var border = wrapper.dataset.trackWidth;
+            var strokeSpacing = wrapper.dataset.strokeSpacing;
+            var endAngle = Math.PI * 2;
+            var formatText = d3.format('.0%');
+            var boxSize = radius * 2;
+            var count = end;
+            var progress = start;
+            var step = end < start ? -0.01 : 0.01;
 
-// ADD Group container
-var g = svg.append('g')
-  .attr('transform', 'translate(' + boxSize / 2 + ',' + boxSize / 2 + ')');
+            //Define the circle
+            var circle = d3.svg.arc()
+            .startAngle(0)
+            .innerRadius(radius)
+            .outerRadius(radius - border);
 
-//Setup track
-var completedTrack = g.append('g').attr('class', 'radial-progress');
-completedTrack.append('path')
-  .attr('class', 'radial-progress__background')
-  .attr('fill', colours.completedTrack)
-  .attr('stroke', colours.completedStroke)
-  .attr('stroke-width', strokeSpacing + 'px')
-  .attr('d', circle.endAngle(endAngle));
+            var circle2 = d3.svg.arc()
+            .startAngle(0)
+            .innerRadius(radius - border)
+            .outerRadius(radius - border * 2);
 
-var yearTrack = g.append('g').attr('class', 'radial-progress');
-yearTrack.append('path')
-  .attr('class', 'radial-progress__background')
-  .attr('fill', colours.yearTrack)
-  .attr('stroke', colours.yearStroke)
-  .attr('stroke-width', strokeSpacing + 'px')
-  .attr('d', circle2.endAngle(endAngle));
+            //setup SVG wrapper
+            var svg = d3.select(wrapper)
+            .append('svg')
+            .attr('width', boxSize)
+            .attr('height', boxSize);
 
-//Add colour fill
-var completedValue = completedTrack.append('path')
-  .attr('class', 'radial-progress__value')
-  .attr('fill', colours.completedFill)
-  .attr('stroke', colours.completedStroke)
-  .attr('stroke-width', strokeSpacing + 'px');
-  
-//Add colour fill
-var yearValue = yearTrack.append('path')
-  .attr('class', 'radial-progress__value')
-  .attr('fill', colours.yearFill)
-  .attr('stroke', colours.yearStroke)
-  .attr('stroke-width', strokeSpacing + 'px');
+            // ADD Group container
+            var g = svg.append('g')
+            .attr('transform', 'translate(' + boxSize / 2 + ',' + boxSize / 2 + ')');
 
-//Add text value
-var yearText = yearTrack.append('text')
-  .attr('fill', colours.yearText)
-  .attr('text-anchor', 'start')
-  .attr('dy', '2.1rem')
-  .attr('dx', '-105px')
-  .text(function(d) { return yearCurrent + '/' + yearGoal; });
-  
-var completeText = completedTrack.append('text')
-  .attr('fill', colours.completedText)
-  .attr('text-anchor', 'start')
-  .attr('dy', '2.1rem')
-  .attr('dx', '5px')
-  .text(function(d) { return completedCurrent + '/' + completedGoal; });
+            //Setup track
+            var completedTrack = g.append('g').attr('class', 'radial-progress');
+            completedTrack.append('path')
+            .attr('class', 'radial-progress__background')
+            .attr('fill', colours.completedTrack)
+            .attr('stroke', colours.completedStroke)
+            .attr('stroke-width', strokeSpacing + 'px')
+            .attr('d', circle.endAngle(endAngle));
 
-var numberTextsl = g.append('text')
-  .attr('fill', colours.completedText)
-  .attr('font-family', 'FontAwesome')
-  .attr('font-size', 'xx-large')
-  .attr('text-anchor', 'start')
-  .attr('dx', '.5rem')
-  .attr('dy', '1rem')
-  .text(function(d) { return '\uf02d ' + formatText(completedPercentage); })
+            var yearTrack = g.append('g').attr('class', 'radial-progress');
+            yearTrack.append('path')
+            .attr('class', 'radial-progress__background')
+            .attr('fill', colours.yearTrack)
+            .attr('stroke', colours.yearStroke)
+            .attr('stroke-width', strokeSpacing + 'px')
+            .attr('d', circle2.endAngle(endAngle));
 
-var numberText2 = g.append('text')
-  .attr('fill', colours.yearText)
-  .attr('font-family', 'FontAwesome')
-  .attr('font-size', 'xx-large')
-  .attr('text-anchor', 'end')
-  .attr('dx', '-.5rem')
-  .attr('dy', '1rem')
-  .text(function(d) { return '\uf073 ' + formatText(yearPercentage); });
+            //Add colour fill
+            var completedValue = completedTrack.append('path')
+            .attr('class', 'radial-progress__value')
+            .attr('fill', colours.completedFill)
+            .attr('stroke', colours.completedStroke)
+            .attr('stroke-width', strokeSpacing + 'px');
 
-var nameText = g.append('text')
-  .attr('text-anchor', 'middle')
-  .attr('font-size', 'x-large')
-  .attr('dy', '-2rem')
-  .text(function(d) { return userName; });
+            //Add colour fill
+            var yearValue = yearTrack.append('path')
+            .attr('class', 'radial-progress__value')
+            .attr('fill', colours.yearFill)
+            .attr('stroke', colours.yearStroke)
+            .attr('stroke-width', strokeSpacing + 'px');
 
-yearValue.attr('d', circle2.endAngle(endAngle * yearPercentage));
-completedValue.attr('d', circle.endAngle(endAngle * completedPercentage));
+            //Add text value
+            var yearText = yearTrack.append('text')
+            .attr('fill', colours.yearText)
+            .attr('text-anchor', 'start')
+            .attr('dy', '2.1rem')
+            .attr('dx', '-105px')
+            .text((d) => { return this.yearCurrent + '/' + this.yearGoal; });
+
+            var completeText = completedTrack.append('text')
+            .attr('fill', colours.completedText)
+            .attr('text-anchor', 'start')
+            .attr('dy', '2.1rem')
+            .attr('dx', '5px')
+            .text((d) => { return this.completedCurrent + '/' + this.completedGoal; });
+
+            var numberTextsl = g.append('text')
+            .attr('fill', colours.completedText)
+            .attr('font-family', 'FontAwesome')
+            .attr('font-size', 'xx-large')
+            .attr('text-anchor', 'start')
+            .attr('dx', '.5rem')
+            .attr('dy', '1rem')
+            .text((d) => { return '\uf02d ' + formatText(this.completedPercentage); })
+
+            var numberText2 = g.append('text')
+            .attr('fill', colours.yearText)
+            .attr('font-family', 'FontAwesome')
+            .attr('font-size', 'xx-large')
+            .attr('text-anchor', 'end')
+            .attr('dx', '-.5rem')
+            .attr('dy', '1rem')
+            .text((d) => { return '\uf073 ' + formatText(this.yearPercentage); });
+
+            var nameText = g.append('text')
+            .attr('text-anchor', 'middle')
+            .attr('font-size', 'x-large')
+            .attr('dy', '-2rem')
+            .text((d) => { return this.userName; });
+
+            var pageText = g.append('text')
+            .attr('fill', colours.pageText)
+            .attr('font-family', 'FontAwesome')
+            .attr('text-anchor', 'middle')
+            .attr('font-size', 'xx-large')
+            .attr('dy', '5rem')
+            .text((d) => { return '\uf15b ' + this.yearPages; });
+
+            yearValue.attr('d', circle2.endAngle(endAngle * this.yearPercentage));
+            completedValue.attr('d', circle.endAngle(endAngle * this.completedPercentage));
+        }
+    },
+    mounted: function() {
+        let data;
+        if(localStorage.data) {
+            data = JSON.parse(LZString.decompressFromEncodedURIComponent(localStorage.data));
+        }
+        else {
+            return;
+        }
+
+        this.categories = data.categories;
+        this.yearPercentage = data.yearPercentage;
+        this.yearCurrent = data.yearCurrent;
+        this.yearGoal = data.yearGoal;
+        this.yearPages = data.yearPages;
+        this.completedPercentage = data.completedPercentage;
+        this.completedCurrent = data.completedCurrent;
+        this.completedGoal = data.completedGoal;
+        this.userName = data.userName;
+        this.yearBooks = data.yearBooks;
+
+        this.initChart();
+    },
+    created: function() {
+        this.$http.get('/data' + window.location.pathname).then(response => {
+            this.yearPercentage = response.body.yearPercentage;
+            this.yearCurrent = response.body.yearCurrent;
+            this.yearGoal = response.body.yearGoal;
+            this.yearPages = response.body.yearPages;
+            this.completedPercentage = response.body.completedPercentage;
+            this.completedCurrent = response.body.completedCurrent;
+            this.completedGoal = response.body.completedGoal;
+            this.userName = response.body.userName;
+            this.yearBooks = response.body.yearBooks;
+            this.persist();
+        });
+    }
+});
+
 </script>
 </body>
