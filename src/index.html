@@ -8,9 +8,19 @@
 <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css"></link>
 <style type="text/css">
 .progress-container {
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    display: inline-block;
+    position: relative;
+    width: 100%;
+    padding-bottom: 100%;
+    vertical-align: top;
+    overflow: hidden;
+}
+
+.svg-content-responsive {
+    display: inline-block;
+    position: absolute;
+    top: 0;
+    left: 0;
 }
 
 #progress {
@@ -113,7 +123,6 @@ var app = new Vue({
     },
     methods: {
         moveNext() {
-            console.log('next');
             this.$refs.page.$fullpage.moveNext();
         },
         movePrev() {
@@ -185,10 +194,13 @@ var app = new Vue({
             .outerRadius(radius - border * 2);
 
             //setup SVG wrapper
+            var existingSvg = d3.select(wrapper).select('svg');
+            existingSvg.remove();
             var svg = d3.select(wrapper)
             .append('svg')
-            .attr('width', boxSize)
-            .attr('height', boxSize);
+            .classed('svg-content-responsive', true)
+            .attr('preserveAspectRatio', 'xMinYMin meet')
+            .attr('viewBox', `0 0 ${boxSize} ${boxSize}`);
 
             // ADD Group container
             var g = svg.append('g')
@@ -310,6 +322,7 @@ var app = new Vue({
             this.userName = response.body.userName;
             this.yearBooks = response.body.yearBooks;
             this.persist();
+            this.initChart();
         });
     }
 });
