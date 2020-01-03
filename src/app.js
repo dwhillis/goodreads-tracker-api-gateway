@@ -51,7 +51,7 @@ let data = (req, res) => {
             let yearGoal = Math.floor((end - start) / oneDay) + 1;
             let yearPercentage = yearCurrent / yearGoal;
             let completedCurrent = yearBooks.length;
-            let completedGoal = 36;
+            let completedGoal = 40;
             let completedPercentage = completedCurrent / completedGoal;
             let userName = 'Dave Hillis';
             let yearPages = yearBooks.reduce((sum, val) => sum + Number(val.pages), 0);
