@@ -1,6 +1,8 @@
 const express = require('express');
 const mustacheExpress = require('mustache-express');
 const app = express();
+const bodyParser = require('body-parser');
+app.use(bodyParser.json());
 
 // Setup express-session for auth0
 const session = require('express-session');

@@ -200,7 +200,7 @@ var app = new Vue({
             });
             this.persist();
         },
-        persist() {
+        persist(localOnly) {
             let data = {
                 categories: this.categories,
                 yearPercentage: this.yearPercentage,
@@ -216,6 +216,9 @@ var app = new Vue({
             };
             let compressedData = LZString.compressToEncodedURIComponent(JSON.stringify(data));
             localStorage.data = compressedData;
+            if (!localOnly) {
+                this.$http.put('/config', {categories: this.categories || []});
+            }
         },
         initChart() {
             var wrapper = document.getElementById('progress');
@@ -360,7 +363,6 @@ var app = new Vue({
             return;
         }
 
-        this.categories = data.categories;
         this.yearPercentage = data.yearPercentage;
         this.yearCurrent = data.yearCurrent;
         this.yearGoal = data.yearGoal;
@@ -371,11 +373,19 @@ var app = new Vue({
         this.userName = data.userName;
         this.yearBooks = data.yearBooks;
 
+
         this.initChart();
     },
     created: function() {
-        this.$http.get('/config').then((response) => {
+        this.$http.get('/config').then((data) => {
+            if (data.body.categories && data.body.categories.length) {
+                this.categories = data.body.categories;
+            }
+            else {
+                this.categories = [];
+            }
         });
+
         this.$http.get('/data').then((response) => {
             this.loading = false;
             this.yearPercentage = response.body.yearPercentage;
@@ -388,7 +398,7 @@ var app = new Vue({
             this.userName = response.body.userName;
             this.picture = response.body.picture;
             this.yearBooks = response.body.yearBooks;
-            this.persist();
+            this.persist(true);
             this.initChart();
         });
     }

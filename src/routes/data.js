@@ -16,9 +16,16 @@ const myCredentials = {
 const oneDay = 1000 * 60 * 60 * 24;
 
 const data = async (req, res) => {
-    req.params.userId = 6940526;
-    console.log(req.params.userId);
+    const userDetails = await documentClient.get({
+        TableName: 'goodreads-tracker',
+        Key: {
+            'userId': req.user.id
+        }
+    }).promise();
+    console.log(userDetails);
+    req.params.userId = userDetails.Item.goodreadsUserId;
     try {
+        console.log(`https://www.goodreads.com/review/list/${req.params.userId}.xml?v=2&sort=date_updated&shelf=read&page=1&per_page=100&key=${myCredentials.key}`);
         let response = await axios({
             method: 'get',
             url: `https://www.goodreads.com/review/list/${req.params.userId}.xml?v=2&sort=date_updated&shelf=read&page=1&per_page=100&key=${myCredentials.key}`,
@@ -40,25 +47,61 @@ const data = async (req, res) => {
             })
             .filter((book) => book.read > start && book.read <= end);
             console.log(yearBooks);
-            let diff = now - start;
-            let yearCurrent = Math.floor((now - start) / oneDay);
-            let yearGoal = Math.floor((end - start) / oneDay) + 1;
-            let yearPercentage = yearCurrent / yearGoal;
-            let completedCurrent = yearBooks.length;
-            let completedGoal = 40;
-            let completedPercentage = completedCurrent / completedGoal;
-            let userName = req.user.displayName;
-            let picture = req.user.picture;
-            let yearPages = yearBooks.reduce((sum, val) => sum + Number(val.pages), 0);
-            res.json({yearPercentage, yearCurrent, yearGoal, yearPages, completedPercentage, completedCurrent, completedGoal, userName, picture, yearBooks});
+            const yearCurrent = Math.floor((now - start) / oneDay);
+            const completedCurrent = yearBooks.length;
+            const yearGoal = Math.floor((end - start) / oneDay) + 1;
+            const completedGoal = 40;
+            const data = {
+                diff: now - start,
+                yearCurrent: yearCurrent,
+                yearGoal: yearGoal,
+                yearPercentage: yearCurrent / yearGoal,
+                completedCurrent: completedCurrent,
+                completedGoal: completedGoal,
+                completedPercentage: completedCurrent / completedGoal,
+                userName: req.user.displayName,
+                picture: req.user.picture,
+                yearPages: yearBooks.reduce((sum, val) => sum + Number(val.pages), 0)
+            };
+            res.json(data);
         });
     }
     catch(err) {
-        console.log(err);
+        console.log(err.message);
         res.status(500).end();
     }
 };
 
+const getConfig = async (req, res) => {
+    req.body.userId = req.user.id;
+    const config = await documentClient.get({
+        TableName: 'goodreads-tracker',
+        Key: {
+            'userId': req.user.id
+        }
+    }).promise();
+    res.json(config.Item);
+};
+
+const saveConfig = async (req, res) => {
+    req.body.userId = req.user.id;
+    console.log(req.body);
+    await documentClient.update({
+        TableName: 'goodreads-tracker',
+        Key: {
+            'userId': req.user.id
+        },
+        UpdateExpression: 'set #categories = :categories',
+        ExpressionAttributeNames: { '#categories': 'categories' },
+        ExpressionAttributeValues: {
+            ':categories': req.body.categories || []
+        }
+    }).promise();
+    res.end();
+};
+
 router.get('/data', secured(), data);
+router.get('/config', secured(), getConfig);
+router.put('/config', secured(), saveConfig);
 
 module.exports = router;
