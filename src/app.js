@@ -1,70 +1,62 @@
 const express = require('express');
 const mustacheExpress = require('mustache-express');
 const app = express();
-const axios = require('axios');
-const parseString = require('xml2js').parseString;
-const AWS = require('aws-sdk');
-const documentClient = new AWS.DynamoDB.DocumentClient();
-const he = require('he');
+const bodyParser = require('body-parser');
+app.use(bodyParser.json());
 
-const myCredentials = {
-  key: process.env.KEY,
-  secret: process.env.SECRET
-};
- 
-app.engine('html', mustacheExpress());
-app.set('view engine', 'html');
-app.set('views', __dirname);
-const oneDay = 1000 * 60 * 60 * 24;
-
-let userId = 6940526;
-
-let mainPage = (req, res) => {
-   res.sendFile(__dirname + '/index.html');
+// Setup express-session for auth0
+const session = require('express-session');
+const sess = {
+    secret: 'blah',
+    cookie: {},
+    resave: false,
+    saveUninitialized: true
 };
 
-let data = (req, res) => {
-    console.log(req.params.userId);
-    axios({
-        method: 'get',
-        url: `https://www.goodreads.com/review/list/${req.params.userId}.xml?v=2&sort=date_updated&shelf=read&page=1&per_page=100&key=${myCredentials.key}`,
-            responseType: 'text'
-    })
-    .then((response) => {
-        let now = new Date();
-        let start = new Date(now.getFullYear(), 0, 1);
-        let end = new Date(now.getFullYear(), 11, 31);
-        parseString(response.data, (err, result) => {
-            let yearBooks = result.GoodreadsResponse.reviews[0].review
-            .map((review) => {
-                return {
-                    id: review.book[0].id[0]._,
-                    title: he.decode(review.book[0].title_without_series[0]),
-                    read: new Date(review.read_at),
-                    pages: review.book[0].num_pages[0]
-                };
-            })
-            .filter((book) => book.read > start && book.read <= end);
-            console.log(yearBooks);
-            let diff = now - start;
-            let yearCurrent = Math.floor((now - start) / oneDay);
-            let yearGoal = Math.floor((end - start) / oneDay) + 1;
-            let yearPercentage = yearCurrent / yearGoal;
-            let completedCurrent = yearBooks.length;
-            let completedGoal = 40;
-            let completedPercentage = completedCurrent / completedGoal;
-            let userName = 'Dave Hillis';
-            let yearPages = yearBooks.reduce((sum, val) => sum + Number(val.pages), 0);
-            res.json({yearPercentage, yearCurrent, yearGoal, yearPages, completedPercentage, completedCurrent, completedGoal, userName, yearBooks});
-        });
-    })
-    .catch((err) => {
-        console.log(err);
-        res.status(500).end();
-    });
-};
+if (app.get('env') === 'production') {
+    sess.cookie.secure = true;
+}
+app.use(session(sess));
 
-app.get('/:userId', mainPage);
-app.get('/data/:userId', data);
+// Load passport
+const dotenv = require('dotenv');
+dotenv.config();
+
+const passport = require('passport');
+const Auth0Strategy = require('passport-auth0');
+
+const strategy = new Auth0Strategy({
+    domain: process.env.AUTH0_DOMAIN,
+    clientID: process.env.AUTH0_CLIENT_ID,
+    clientSecret: process.env.AUTH0_CLIENT_SECRET,
+    callbackURL: process.env.AUTH0_CALLBACK_URL || 'http://100.115.92.206:3000/callback'
+}, (accessToken, refreshToken, extraParams, profile, done) => {
+    return done(null, profile);
+});
+
+passport.use(strategy);
+
+passport.serializeUser((user, done) => {
+    done(null, user);
+});
+
+passport.deserializeUser((user, done) => {
+    done(null, user);
+});
+
+app.use(passport.initialize());
+app.use(passport.session());
+
+const authRouter = require('./routes/auth');
+const dataRouter = require('./routes/data');
+const indexRouter = require('./routes/index');
+const usersRouter = require('./routes/users');
+const userInViews = require('./middleware/userInViews');
+
+app.use(userInViews());
+app.use('/', usersRouter);
+app.use('/', authRouter);
+app.use('/', dataRouter);
+app.use('/', indexRouter);
 
 module.exports = app;
