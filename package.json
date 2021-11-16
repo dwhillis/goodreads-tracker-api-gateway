@@ -11,7 +11,7 @@
     "build": "rm bundle.zip; zip -jr bundle.zip src/*; zip -r bundle.zip node_modules/*"
   },
   "dependencies": {
-    "aws-sdk": "^2.597.0",
+    "aws-sdk": "^2.814.0",
     "aws-serverless-express": "^3.1.3",
     "axios": "^0.18.1",
     "connect-dynamodb": "^2.0.4",
